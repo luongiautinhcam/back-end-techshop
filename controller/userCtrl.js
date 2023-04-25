@@ -4,6 +4,8 @@ const { generateToken } = require("../config/jwtToken");
 const validateMongoDbId = require("../utils/validateMongodbId");
 const { generateRefreshToken } = require("../config/refreshToken");
 const jwt = require("jsonwebtoken");
+const { sendEmail } = require("./emailCtrl");
+const crypto = require("crypto");
 //Create User
 const createUser = asyncHandler(async (req, res) => {
   const email = req.body.email;
@@ -66,7 +68,27 @@ const handleRefreshToken = asyncHandler(async (req, res) => {
 });
 
 //Logout
-const logout = asyncHandler(async (req, res) => {});
+const logout = asyncHandler(async (req, res) => {
+  const cookie = req.cookies;
+  if (!cookie?.refreshToken) throw new Error("No Refresh Token in Cookies");
+  const refreshToken = cookie.refreshToken;
+  const user = await User.findOne({ refreshToken });
+  if (!user) {
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: true,
+    });
+    return res.sendStatus(204);
+  }
+  await User.findOneAndUpdate(refreshToken, {
+    refreshToken: "",
+  });
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: true,
+  });
+  res.sendStatus(204);
+});
 
 //Update a user
 const updatedUser = asyncHandler(async (req, res) => {
@@ -173,6 +195,43 @@ const unblockUser = asyncHandler(async (req, res) => {
   }
 });
 
+//Update Password
+const updatePassword = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  const { password } = req.body;
+  validateMongoDbId(_id);
+  const user = await User.findById(_id);
+  if (password) {
+    user.password = password;
+    const updatePassword = await user.save();
+    res.json(updatePassword);
+  } else {
+    res.json(user);
+  }
+});
+
+//Forgot Password
+const forgotPasswordToken = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) throw new Error("User not found with this email");
+  try {
+    const token = await user.createPasswordResetToken();
+    await user.save();
+    const resetURL = `Chao, vui long chon vao duong dan de dat lai mat khau cua ban. Duong dan co thoi han trong 10 phut. <a href='http://localhost:5000/api/user/reset-password/${token}'>Chon o day</a>`;
+    const data = {
+      to: email,
+      text: "Chao nguoi dung",
+      subject: "Duong dan dat lai mat khau",
+      htm: resetURL,
+    };
+    sendEmail(data);
+    res.json(token);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
 module.exports = {
   createUser,
   loginUserCtrl,
@@ -183,4 +242,7 @@ module.exports = {
   blockUser,
   unblockUser,
   handleRefreshToken,
+  logout,
+  updatePassword,
+  forgotPasswordToken,
 };
