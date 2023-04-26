@@ -6,7 +6,7 @@ var productSchema = new mongoose.Schema(
     title: {
       type: String,
       required: true,
-      trim: true, 
+      trim: true,
     },
     slug: {
       type: String,
@@ -38,19 +38,20 @@ var productSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    images: {
-      type: Array,
-    },
-    color: {
-      type: String,
-      required: true,
-    },
+    images: [],
+    color: [],
+    tags: [],
     ratings: [
       {
         star: Number,
+        comment: String,
         postedby: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       },
     ],
+    totalrating: {
+      type: String,
+      default: 0,
+    },
   },
   { timestamps: true }
 );
