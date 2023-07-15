@@ -12,7 +12,8 @@ const { generateRefreshToken } = require("../config/refreshToken");
 const jwt = require("jsonwebtoken");
 const { sendEmail } = require("./emailCtrl");
 const crypto = require("crypto");
-//Create User
+
+//Tao tai khoan user
 const createUser = asyncHandler(async (req, res) => {
   const email = req.body.email;
   const findUser = await User.findOne({ email: email });
@@ -25,7 +26,7 @@ const createUser = asyncHandler(async (req, res) => {
   }
 });
 
-//Login User
+//Dang nhap tai khoan user
 const loginUserCtrl = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   //Kiem tra user co hay khong
@@ -49,14 +50,20 @@ const loginUserCtrl = asyncHandler(async (req, res) => {
       lastname: findUser?.lastname,
       email: findUser?.email,
       mobile: findUser?.mobile,
+      address: findUser?.address,
+      state: findUser?.state,
+      city: findUser?.city,
+      zipcode: findUser?.zipcode,
+      role: findUser?.role,
+      isBlocked: findUser?.isBlocked,
       token: generateToken(findUser?._id),
     });
   } else {
-    throw new Error("Invalid Credentials");
+    throw new Error("Sai thông tin đăng nhập");
   }
 });
 
-//Admin login
+//quan tri vien dang nhap
 const loginAdmin = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   //Kiem tra user co hay khong
@@ -81,6 +88,7 @@ const loginAdmin = asyncHandler(async (req, res) => {
       lastname: findAdmin?.lastname,
       email: findAdmin?.email,
       mobile: findAdmin?.mobile,
+      role: findAdmin?.role,
       token: generateToken(findAdmin?._id),
     });
   } else {
@@ -105,7 +113,7 @@ const handleRefreshToken = asyncHandler(async (req, res) => {
   });
 });
 
-//Logout
+//Dang xuat
 const logout = asyncHandler(async (req, res) => {
   const cookie = req.cookies;
   if (!cookie?.refreshToken) throw new Error("No Refresh Token in Cookies");
@@ -128,7 +136,7 @@ const logout = asyncHandler(async (req, res) => {
   res.sendStatus(204);
 });
 
-//Update a user
+//User Cap nhat user
 const updatedUser = asyncHandler(async (req, res) => {
   const { _id } = req.user;
   validateMongoDbId(_id);
@@ -140,6 +148,10 @@ const updatedUser = asyncHandler(async (req, res) => {
         lastname: req?.body?.lastname,
         email: req?.body?.email,
         mobile: req?.body?.mobile,
+        address: req?.body?.address,
+        state: req?.body?.state,
+        city: req?.body?.city,
+        zipcode: req?.body?.zipcode,
       },
       {
         new: true,
@@ -151,25 +163,43 @@ const updatedUser = asyncHandler(async (req, res) => {
   }
 });
 
-//Save user address
-const saveAddress = asyncHandler(async (req, res) => {
-  const { _id } = req.user;
-  validateMongoDbId(_id);
+//Admin
+const updatedUserByAdmin = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  validateMongoDbId(id);
   try {
-    const updatedUser = await User.findByIdAndUpdate(
-      _id,
-      {
-        address: req?.body?.address,
-      },
+    const updatedUserByADmin = await User.findByIdAndUpdate(
+      { _id: id },
+      req.body,
       {
         new: true,
       }
     );
-    res.json(updatedUser);
+    res.json(updatedUserByADmin);
   } catch (error) {
     throw new Error(error);
   }
 });
+
+//Save user address
+// const saveAddress = asyncHandler(async (req, res) => {
+//   const { _id } = req.user;
+//   validateMongoDbId(_id);
+//   try {
+//     const updatedUser = await User.findByIdAndUpdate(
+//       _id,
+//       {
+//         address: req?.body?.address,
+//       },
+//       {
+//         new: true,
+//       }
+//     );
+//     res.json(updatedUser);
+//   } catch (error) {
+//     throw new Error(error);
+//   }
+// });
 
 //Get all user
 const getallUser = asyncHandler(async (req, res) => {
@@ -268,7 +298,7 @@ const updatePassword = asyncHandler(async (req, res) => {
   }
 });
 
-//Forgot Password
+//Quen mat khau
 const forgotPasswordToken = asyncHandler(async (req, res) => {
   const { email } = req.body;
   const user = await User.findOne({ email });
@@ -276,11 +306,11 @@ const forgotPasswordToken = asyncHandler(async (req, res) => {
   try {
     const token = await user.createPasswordResetToken();
     await user.save();
-    const resetURL = `Chao, vui long chon vao duong dan de dat lai mat khau cua ban. Duong dan co thoi han trong 10 phut. <a href='http://localhost:5000/api/user/reset-password/${token}'>Chon o day</a>`;
+    const resetURL = `Chào bạn, vui lòng chọn vào đường dẫn để đặt lại mật khẩu của bạn. Đường dẫn có thời hạn trong 10 phút. <a href='http://localhost:3000/reset-password/${token}'>ĐẶT LẠI MẬT KHẨU</a>`;
     const data = {
       to: email,
       text: "Chao nguoi dung",
-      subject: "Duong dan dat lai mat khau",
+      subject: "Đường dẫn đặt lại mật khẩu",
       htm: resetURL,
     };
     sendEmail(data);
@@ -386,108 +416,205 @@ const updateProductQuantityFromCart = asyncHandler(async (req, res) => {
   }
 });
 
-//Empty Cart
-const emptyCart = asyncHandler(async (req, res) => {
-  const { _id } = req.user;
-  validateMongoDbId(_id);
-  try {
-    const user = await User.findOne({ _id });
-    const cart = await Cart.findOneAndRemove({ orderby: user._id });
-    res.json(cart);
-  } catch (error) {
-    throw new Error(error);
-  }
-});
+//Tao order
+// const createOrder = asyncHandler(async (req, res) => {
+//   const {
+//     shippingInfo,
+//     paymentInfo,
+//     orderItems,
+//     totalPrice,
+//     totalPriceAfterDiscount,
+//   } = req.body;
+//   const { _id } = req.user;
+//   try {
+//     const order = await Order.create({
+//       shippingInfo,
+//       paymentInfo,
+//       orderItems,
+//       totalPrice,
+//       totalPriceAfterDiscount,
+//       user: _id,
+//     });
 
-//Apply Coupon
-const applyCoupon = asyncHandler(async (req, res) => {
-  const { coupon } = req.body;
-  const { _id } = req.user;
-  validateMongoDbId(_id);
-  const validCoupon = await Coupon.findOne({ name: coupon });
-  if (validCoupon === null) {
-    throw new Error("Invalid Coupon");
-  }
-  const user = await User.findOne({ _id });
-  let { cartTotal } = await Cart.findOne({
-    orderby: user._id,
-  }).populate("products.product");
-  let totalAfterDiscount = (
-    cartTotal -
-    (cartTotal * validCoupon.discount) / 100
-  ).toFixed(2);
-  await Cart.findOneAndUpdate(
-    { orderby: user._id },
-    { totalAfterDiscount },
-    { new: true }
-  );
-  res.json(totalAfterDiscount);
-});
+//     res.json({
+//       order,
+//       success: true,
+//     });
+//   } catch (error) {
+//     throw new Error(error);
+//   }
+// });
 
-//Create Order
+//Tao order
 const createOrder = asyncHandler(async (req, res) => {
-  const { COD, couponApplied } = req.body;
+  const {
+    shippingInfo,
+    paymentInfo,
+    orderItems,
+    totalPrice,
+    totalPriceAfterDiscount,
+  } = req.body;
   const { _id } = req.user;
-  validateMongoDbId(_id);
   try {
-    if (!COD) throw new Error("Tao don hang loi");
-    const user = await User.findById(_id);
-    let userCart = await Cart.findOne({ orderby: user._id });
-    let finalAmout = 0;
-    if (couponApplied && userCart.totalAfterDiscount) {
-      finalAmout = userCart.totalAfterDiscount;
-    } else {
-      finalAmout = userCart.cartTotal;
+    // Reduce the quantity of products in the order from the Product collection
+    for (let i = 0; i < orderItems.length; i++) {
+      const { product, quantity } = orderItems[i];
+      const foundProduct = await Product.findById(product);
+      foundProduct.quantity -= quantity;
+      foundProduct.sold += quantity;
+      await foundProduct.save();
     }
-    let newOrder = await new Order({
-      products: userCart.products,
-      paymentIntent: {
-        id: uniqid(),
-        method: "COD",
-        amount: finalAmout,
-        status: "Thanh toan khi nhan hang",
-        created: Date.now(),
-        currency: "usd",
-      },
-      orderby: user._id,
-      orderStatus: "Thanh toan khi nhan hang",
-    }).save();
-    let update = userCart.products.map((item) => {
-      return {
-        updateOne: {
-          filter: { _id: item.product._id },
-          update: { $inc: { quantity: -item.count, sold: +item.count } },
-        },
-      };
+    const order = await Order.create({
+      shippingInfo,
+      paymentInfo,
+      orderItems,
+      totalPrice,
+      totalPriceAfterDiscount,
+      user: _id,
     });
-    const updated = await Product.bulkWrite(update, {});
-    res.json({ message: "success" });
+
+    res.json({
+      order,
+      success: true,
+    });
   } catch (error) {
     throw new Error(error);
   }
 });
 
-//Get Order
-const getOrders = asyncHandler(async (req, res) => {
+//Lay thong tin don hang
+const getMyOrders = asyncHandler(async (req, res) => {
   const { _id } = req.user;
-  validateMongoDbId(_id);
   try {
-    const userorders = await Order.findOne({ orderby: _id })
-      .populate("products.product")
-      .populate("orderby")
+    const orders = await Order.find({ user: _id })
+      .populate("user")
+      .populate("orderItems.product")
+      .populate("orderItems.color")
       .exec();
-    res.json(userorders);
+    res.json({ orders });
   } catch (error) {
     throw new Error(error);
   }
 });
 
-//Get all Order
+//Lấy thông tin đơn hàng
+const getMyOrder = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  validateMongoDbId(id);
+  try {
+    const getMyOrder = await Order.findById(id)
+      .populate("user")
+      .populate("orderItems.product")
+      .populate("orderItems.color")
+      .exec();
+    res.json(getMyOrder);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+//Empty Cart
+// const emptyCart = asyncHandler(async (req, res) => {
+//   const { _id } = req.user;
+//   validateMongoDbId(_id);
+//   try {
+//     const user = await User.findOne({ _id });
+//     const cart = await Cart.findOneAndRemove({ orderby: user._id });
+//     res.json(cart);
+//   } catch (error) {
+//     throw new Error(error);
+//   }
+// });
+
+// //Apply Coupon
+// const applyCoupon = asyncHandler(async (req, res) => {
+//   const { coupon } = req.body;
+//   const { _id } = req.user;
+//   validateMongoDbId(_id);
+//   const validCoupon = await Coupon.findOne({ name: coupon });
+//   if (validCoupon === null) {
+//     throw new Error("Invalid Coupon");
+//   }
+//   const user = await User.findOne({ _id });
+//   let { cartTotal } = await Cart.findOne({
+//     orderby: user._id,
+//   }).populate("products.product");
+//   let totalAfterDiscount = (
+//     cartTotal -
+//     (cartTotal * validCoupon.discount) / 100
+//   ).toFixed(2);
+//   await Cart.findOneAndUpdate(
+//     { orderby: user._id },
+//     { totalAfterDiscount },
+//     { new: true }
+//   );
+//   res.json(totalAfterDiscount);
+// });
+
+// //Create Order
+// const createOrder = asyncHandler(async (req, res) => {
+//   const { COD, couponApplied } = req.body;
+//   const { _id } = req.user;
+//   validateMongoDbId(_id);
+//   try {
+//     if (!COD) throw new Error("Tao don hang loi");
+//     const user = await User.findById(_id);
+//     let userCart = await Cart.findOne({ orderby: user._id });
+//     let finalAmout = 0;
+//     if (couponApplied && userCart.totalAfterDiscount) {
+//       finalAmout = userCart.totalAfterDiscount;
+//     } else {
+//       finalAmout = userCart.cartTotal;
+//     }
+//     let newOrder = await new Order({
+//       products: userCart.products,
+//       paymentIntent: {
+//         id: uniqid(),
+//         method: "COD",
+//         amount: finalAmout,
+//         status: "Thanh toan khi nhan hang",
+//         created: Date.now(),
+//         currency: "usd",
+//       },
+//       orderby: user._id,
+//       orderStatus: "Thanh toan khi nhan hang",
+//     }).save();
+//     let update = userCart.products.map((item) => {
+//       return {
+//         updateOne: {
+//           filter: { _id: item.product._id },
+//           update: { $inc: { quantity: -item.count, sold: +item.count } },
+//         },
+//       };
+//     });
+//     const updated = await Product.bulkWrite(update, {});
+//     res.json({ message: "success" });
+//   } catch (error) {
+//     throw new Error(error);
+//   }
+// });
+
+// //Get Order
+// const getOrders = asyncHandler(async (req, res) => {
+//   const { _id } = req.user;
+//   validateMongoDbId(_id);
+//   try {
+//     const userorders = await Order.findOne({ orderby: _id })
+//       .populate("products.product")
+//       .populate("orderby")
+//       .exec();
+//     res.json(userorders);
+//   } catch (error) {
+//     throw new Error(error);
+//   }
+// });
+
+//Lay thong tin tat ca don hang
 const getAllOrders = asyncHandler(async (req, res) => {
   try {
     const alluserorders = await Order.find()
-      .populate("products.product")
-      .populate("orderby")
+      .populate("orderItems")
+      .populate("user")
       .exec();
     res.json(alluserorders);
   } catch (error) {
@@ -495,27 +622,27 @@ const getAllOrders = asyncHandler(async (req, res) => {
   }
 });
 
-//Update status order
-const updateOrderStatus = asyncHandler(async (req, res) => {
-  const { status } = req.body;
-  const { id } = req.params;
-  validateMongoDbId(id);
-  try {
-    const updateOrderStatus = await Order.findByIdAndUpdate(
-      id,
-      {
-        orderStatus: status,
-        paymentIntent: {
-          status: status,
-        },
-      },
-      { new: true }
-    );
-    res.json(updateOrderStatus);
-  } catch (error) {
-    throw new Error(error);
-  }
-});
+// //Update status order
+// const updateOrderStatus = asyncHandler(async (req, res) => {
+//   const { status } = req.body;
+//   const { id } = req.params;
+//   validateMongoDbId(id);
+//   try {
+//     const updateOrderStatus = await Order.findByIdAndUpdate(
+//       id,
+//       {
+//         orderStatus: status,
+//         paymentIntent: {
+//           status: status,
+//         },
+//       },
+//       { new: true }
+//     );
+//     res.json(updateOrderStatus);
+//   } catch (error) {
+//     throw new Error(error);
+//   }
+// });
 
 module.exports = {
   createUser,
@@ -524,6 +651,7 @@ module.exports = {
   getaUser,
   deleteaUser,
   updatedUser,
+  updatedUserByAdmin,
   blockUser,
   unblockUser,
   handleRefreshToken,
@@ -533,15 +661,18 @@ module.exports = {
   resetPassword,
   loginAdmin,
   getWishlist,
-  saveAddress,
+  // saveAddress,
   userCart,
   getUserCart,
-  emptyCart,
-  applyCoupon,
-  createOrder,
-  getOrders,
-  updateOrderStatus,
+  // emptyCart,
+  // applyCoupon,
+  // createOrder,
+  // getOrders,
+  // updateOrderStatus,
   getAllOrders,
+  createOrder,
+  getMyOrders,
+  getMyOrder,
   removeProductFromCart,
   updateProductQuantityFromCart,
 };

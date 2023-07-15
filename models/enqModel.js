@@ -21,7 +21,7 @@ var enqSchema = new mongoose.Schema({
   status: {
     type: String,
     default: "Da gui",
-    enum: ["Da gui", "Da lien he", "Trong tien trinh"],
+    enum: ["Da gui", "Da lien he", "Dang giai quyet", "Da giai quyet"],
   },
 });
 

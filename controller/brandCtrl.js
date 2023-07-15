@@ -1,4 +1,5 @@
 const Brand = require("../models/brandModel");
+const Product = require("../models/productModel");
 const asyncHandler = require("express-async-handler");
 const validateMongoDbId = require("../utils/validateMongodbId");
 
@@ -31,6 +32,10 @@ const deleteBrand = asyncHandler(async (req, res) => {
   const { id } = req.params;
   validateMongoDbId(id);
   try {
+    const productsCount = await Product.countDocuments({ brand: id });
+    if (productsCount > 0) {
+      throw new Error("Không thể xoá hãng còn sản phẩm");
+    }
     const deletedBrand = await Brand.findByIdAndDelete(id);
     res.json(deletedBrand);
   } catch (error) {

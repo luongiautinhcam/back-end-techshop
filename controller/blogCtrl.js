@@ -53,7 +53,8 @@ const getBlog = asyncHandler(async (req, res) => {
 //GetAllBlog
 const getAllBlog = asyncHandler(async (req, res) => {
   try {
-    const getBlogs = await Blog.find();
+    const getBlogs = await Blog.find().populate("category")
+    .exec();
     res.json(getBlogs);
   } catch (error) {
     throw new Error(error);
@@ -65,6 +66,10 @@ const deleteBlog = asyncHandler(async (req, res) => {
   const { id } = req.params;
   validateMongoDbId(id);
   try {
+    const blogsCount = await Blog.countDocuments({ category: id });
+    if (blogsCount > 0) {
+      throw new Error("Không thể xoá danh mục còn bài viết");
+    }
     const deletedBlog = await Blog.findByIdAndDelete(id);
     res.json(deletedBlog);
   } catch (error) {

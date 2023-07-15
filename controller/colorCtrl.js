@@ -31,6 +31,10 @@ const deleteColor = asyncHandler(async (req, res) => {
   const { id } = req.params;
   validateMongoDbId(id);
   try {
+    const productsCount = await Product.countDocuments({ color: id });
+    if (productsCount > 0) {
+      throw new Error("Không thể xoá màu sắc còn sản phẩm");
+    }
     const deletedColor = await Color.findByIdAndDelete(id);
     res.json(deletedColor);
   } catch (error) {

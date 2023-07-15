@@ -1,8 +1,8 @@
 const Product = require("../models/productModel");
-const asyncHandler = require("express-async-handler");
-const validateMongoDbId = require("../utils/validateMongodbId");
 const User = require("../models/userModel");
+const asyncHandler = require("express-async-handler");
 const slugify = require("slugify");
+const validateMongoDbId = require("../utils/validateMongodbId");
 
 const createProduct = asyncHandler(async (req, res) => {
   try {
@@ -16,7 +16,7 @@ const createProduct = asyncHandler(async (req, res) => {
   }
 });
 
-//Update product
+//Cập nhật sản phẩm
 const updateProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
   validateMongoDbId(id);
@@ -24,21 +24,25 @@ const updateProduct = asyncHandler(async (req, res) => {
     if (req.body.title) {
       req.body.slug = slugify(req.body.title);
     }
-    const updateProduct = await Product.findOneAndUpdate(id, req.body, {
-      new: true,
-    });
+    const updateProduct = await Product.findOneAndUpdate(
+      { _id: id },
+      req.body,
+      {
+        new: true,
+      }
+    );
     res.json(updateProduct);
   } catch (error) {
     throw new Error(error);
   }
 });
 
-//Delete product
+//Xoá sản phẩm
 const deleteProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
   validateMongoDbId(id);
   try {
-    const deleteProduct = await Product.findOneAndDelete(id);
+    const deleteProduct = await Product.findOneAndDelete({ _id: id });
     res.json(deleteProduct);
   } catch (error) {
     throw new Error(error);
@@ -50,7 +54,12 @@ const getaProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
   validateMongoDbId(id);
   try {
-    const findProduct = await Product.findById(id).populate("color");
+    const findProduct = await Product.findById(id)
+      .populate("brand")
+      .populate("color")
+      .populate("category")
+      .populate("ratings.postedby")
+      .exec();
     res.json(findProduct);
   } catch (error) {
     throw new Error(error);
@@ -94,7 +103,11 @@ const getAllProduct = asyncHandler(async (req, res) => {
       const productCount = await Product.countDocuments();
       if (skip >= productCount) throw new Error("This page does not exists");
     }
-    const product = await query;
+    const product = await query
+      .populate("brand")
+      .populate("color")
+      .populate("category")
+      .exec();
     res.json(product);
   } catch (error) {
     throw new Error(error);
@@ -184,6 +197,8 @@ const rating = asyncHandler(async (req, res) => {
     throw new Error(error);
   }
 });
+
+//Cập nhật số lượng sản phẩm
 
 module.exports = {
   createProduct,
